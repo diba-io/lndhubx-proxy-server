@@ -13,6 +13,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // loadApiEndpoints(app);
-app.use("/.well-known", apiRouter);
+app.use(apiRouter);
 
 export default app;

@@ -28,7 +28,7 @@ router.post("/username", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/nostr.json", async (req: Request, res: Response) => {
+router.get("/.well-known/nostr.json", async (req: Request, res: Response) => {
   try {
     const username: string = req.query.username as string;
 
@@ -36,31 +36,80 @@ router.get("/nostr.json", async (req: Request, res: Response) => {
       return res.status(400).send({ success: false, error: "No username" });
     }
 
-    const resp = await nostr(username);
     const client = redisClient();
     client.connect();
-    const lookup = await client.get(`LOOKUP:${username}`);
-    console.log(lookup);
+    const xpubkh = await client.get(`LOOKUP:${username}`);
+    if (!xpubkh) {
+      return res
+        .status(400)
+        .send({ success: false, error: "Username not found!" });
+    }
+    const resp = await nostr(xpubkh);
+    const newResp = {
+      names: {
+        [username]: resp.names[xpubkh],
+      },
+    };
 
-    return res.json(resp);
+    return res.json(newResp);
   } catch (error) {
     res.status(500).send({ success: false });
   }
 });
 
-router.get("/lnurlp/:username", async (req: Request, res: Response) => {
+router.get(
+  "/.well-known/lnurlp/:username",
+  async (req: Request, res: Response) => {
+    try {
+      const username: string = req.params.username as string;
+
+      if (!username) {
+        return res.status(400).send({ success: false, error: "No username" });
+      }
+
+      const client = redisClient();
+      client.connect();
+      const xpubkh = await client.get(`LOOKUP:${username}`);
+      if (!xpubkh) {
+        return res
+          .status(400)
+          .send({ success: false, error: "Username not found!" });
+      }
+      const resp = await lnurlp(xpubkh);
+
+      resp.callback = `https://bitmask.app/api/pay/${username}`;
+      resp.metadata = `[[\"text/plain\",\"Paid to ${username}@bitmask.app\"]]`;
+
+      return res.json(resp);
+    } catch (error) {
+      res.status(500).send({ success: false });
+    }
+  }
+);
+
+router.get("/pay/:username", async (req: Request, res: Response) => {
   try {
     const username: string = req.params.username as string;
+    const amount: number = parseInt(req.query.amount as string);
 
     if (!username) {
       return res.status(400).send({ success: false, error: "No username" });
     }
 
+    if (!username) {
+      return res.status(400).send({ success: false, error: "No amount" });
+    }
+
     const client = redisClient();
     client.connect();
-    const lookup = await client.get(`LOOKUP:${username}`);
-    console.log(lookup);
-    const resp = await lnurlp(username);
+    const xpubkh = await client.get(`LOOKUP:${username}`);
+    if (!xpubkh) {
+      return res
+        .status(400)
+        .send({ success: false, error: "Username not found!" });
+    }
+    const resp = await pay(username, amount);
+    console.log(resp);
 
     return res.json(resp);
   } catch (error) {
@@ -86,6 +135,20 @@ const nostr = async (username: string) => {
   try {
     const r = await axios.get(
       process.env.LNDHUBX_URL + `/.well-known/nostr.json?name=${username}`
+    );
+
+    return r.data;
+  } catch (error) {
+    console.error(error);
+
+    return false;
+  }
+};
+
+const pay = async (username: string, amount: number) => {
+  try {
+    const r = await axios.get(
+      process.env.LNDHUBX_URL + `/pay/${username}?amount=${amount}`
     );
 
     return r.data;

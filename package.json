@@ -34,9 +34,9 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
+    "@upstash/redis": "^1.22.0",
     "axios": "^1.4.0",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "redis": "^4.6.7"
+    "express": "^4.18.2"
   }
 }

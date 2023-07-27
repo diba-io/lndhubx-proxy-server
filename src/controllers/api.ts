@@ -17,9 +17,7 @@ router.post("/username", async (req: Request, res: Response) => {
     if (!xpubkh) {
       return res.status(400).send({ success: false, error: "No xpubkh" });
     }
-
     const client = redisClient();
-    client.connect();
     await client.set(`LOOKUP:${username}`, xpubkh);
 
     res.status(200).send({ success: true });
@@ -37,8 +35,8 @@ router.get("/.well-known/nostr.json", async (req: Request, res: Response) => {
     }
 
     const client = redisClient();
-    client.connect();
-    const xpubkh = await client.get(`LOOKUP:${username}`);
+
+    const xpubkh: string | null = await client.get(`LOOKUP:${username}`);
     if (!xpubkh) {
       return res
         .status(400)
@@ -66,10 +64,8 @@ router.get(
       if (!username) {
         return res.status(400).send({ success: false, error: "No username" });
       }
-
       const client = redisClient();
-      client.connect();
-      const xpubkh = await client.get(`LOOKUP:${username}`);
+      const xpubkh: string | null = await client.get(`LOOKUP:${username}`);
       if (!xpubkh) {
         return res
           .status(400)
@@ -99,10 +95,8 @@ router.get("/pay/:username", async (req: Request, res: Response) => {
     if (!username) {
       return res.status(400).send({ success: false, error: "No amount" });
     }
-
     const client = redisClient();
-    client.connect();
-    const xpubkh = await client.get(`LOOKUP:${username}`);
+    const xpubkh: string | null = await client.get(`LOOKUP:${username}`);
     if (!xpubkh) {
       return res
         .status(400)
